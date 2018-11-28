@@ -14,6 +14,8 @@ import pandas, xgboost, numpy, textblob, string
 from keras.preprocessing import text, sequence
 from keras import layers, models, optimizers
 
+import nltk
+
 pp = pprint.PrettyPrinter(indent=4)
 additional_stop_words = set()
 
@@ -97,12 +99,18 @@ for fpath in iter_files(TRAINING_DATA):
 	with open(fpath, 'r') as f:
 		label = os.path.basename(fpath)[:-3]
 		labels.append(label)
+		word_and_pos = ""
 		doc = ""
 		line = f.readline()
 		while line:
 			doc += line.strip()
 			line=f.readline()
-		texts.append(doc)
+		tokens = nltk.word_tokenize(doc.lower())
+		word_and_pos_list = nltk.pos_tag(tokens)
+		for word, pos in word_and_pos_list:
+			word_and_pos += word + " " + pos + " "
+		texts.append(word_and_pos)
+
 
 #create a dataframe using texts and labels
 trainDF = pandas.DataFrame()
@@ -119,18 +127,13 @@ train_y = encoder.transform(train_y)
 valid_y = encoder.transform(valid_y)
 
 #create a count vectorizer object
-count_vect = CountVectorizer(analyzer='word', token_pattern=r'\w{1,}', stop_words=stop_words)
+count_vect = CountVectorizer(analyzer='word', token_pattern=r'\w{1,}')
 count_vect.fit(trainDF['text'])
 
 #transform the training and validation data using count vectorizer object
 xtrain_count = count_vect.transform(train_x)
 xvalid_count = count_vect.transform(valid_x)
 
-# #word level tf-idf
-# tfidf_vect = TfidfVectorizer(analyzer='word')
-# tfidf_vect.fit(trainDF['text'])
-# xtrain_tfidf = tfidf_vect.transform(train_x)
-# xvalid_tfidf = tfidf_vect.transform(valid_x)
 
 def train_model(classifier, feature_vector_train, label, feature_vector_valid, is_neural_net=False):
 	#fit the training dataset on the classifier
