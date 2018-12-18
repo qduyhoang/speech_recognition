@@ -147,10 +147,10 @@ def simple_logistic_classify(X_tr, y_tr, X_test, y_test, description, _C=1):
 	s = m.score(X_test, y_test)
 	print("Test score with", description, "features: ", s)
 	return m
-m1 = simple_logistic_classify(xtrain_count, train_y, xvalid_count, valid_y, 'bow (before parameter tuning)', )
-m2 = simple_logistic_classify(xtrain_tfidf, train_y, xvalid_tfidf, valid_y, 'tfidf (before parameter tuning)')
+m1 = simple_logistic_classify(xtrain_count, train_y, xvalid_count, valid_y, 'bow (before regularization tuning)', )
+m2 = simple_logistic_classify(xtrain_tfidf, train_y, xvalid_tfidf, valid_y, 'tfidf (before regularization tuning)')
 
-m1 = simple_logistic_classify(xtrain_count, train_y, xvalid_count, valid_y, 'bow (after parameter tuning)', 
+m1 = simple_logistic_classify(xtrain_count, train_y, xvalid_count, valid_y, 'bow (after regularization tuning)', 
 								_C=bow_search.best_params_['C'])
-m2 = simple_logistic_classify(xtrain_tfidf, train_y, xvalid_tfidf, valid_y, 'tfidf (after parameter tuning)',
+m2 = simple_logistic_classify(xtrain_tfidf, train_y, xvalid_tfidf, valid_y, 'tfidf (after regularization tuning)',
 								_C=tfidf_search.best_params_['C'])
