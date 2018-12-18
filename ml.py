@@ -12,6 +12,7 @@ import nltk
 from sklearn.metrics import precision_recall_fscore_support
 import time
 
+import pandas as pd
 
 additional_stop_words = set()
 
@@ -116,38 +117,40 @@ selector = SelectPercentile(f_classif, percentile=20)
 # xtrain_count = selector.transform(xtrain_count)
 # xvalid_count = selector.transform(xvalid_count)
 
+# Specify a search grid, then do a 5-fold grid search for each of the feature sets
+C_values = [1e-1, 1e1, 1e2, 1.25e2, 1.5e2, 2e2, 1e3]
+param_grid_ = {'C': C_values}
 
-def train_model(classifier, feature_vector_train, label, feature_vector_valid, is_neural_net=False):
-	#fit the training dataset on the classifier
-	classifier.fit(feature_vector_train, label)
+# Tune classifier for bag-of-words representation
+bow_search = model_selection.GridSearchCV(linear_model.LogisticRegression(), cv=5, 
+                                  param_grid=param_grid_)
+bow_search.fit(xtrain_count, train_y)
 
-	start_time = time.time()
-	#predict the labels on validation dataset
-	predictions = classifier.predict(feature_vector_valid)
-	elapsed_time = time.time()
-	print("Time to predict: %.5f" %(elapsed_time - start_time))
-
-
-	if is_neural_net:
-		predictions = predictions.argmax(axis=-1)
-	# decoded_labels = encoder.inverse_transform(predictions)
-	# decoded_input = tfidf_vect.inverse_transform(feature_vector_valid)
-	# for i in range(20):
-	# 	print("X=%s, Predicted=%s" % (decoded_input[i], decoded_labels[i]))
-	return precision_recall_fscore_support(valid_y, predictions, average='macro')
+# Tune classifier for tf-idf
+tfidf_search = model_selection.GridSearchCV(linear_model.LogisticRegression(), cv=5,
+                                   param_grid=param_grid_)
+tfidf_search.fit(xtrain_tfidf, train_y)
 
 
-#Linear classifier on Count Vectors
-accuracy = train_model(linear_model.LogisticRegression(), xtrain_count, train_y, xvalid_count)
-print("LR, Count Vectors: ", accuracy)
+search_results = pd.DataFrame.from_dict({
+                              'bow': bow_search.cv_results_['mean_test_score'],
+                              'tfidf': tfidf_search.cv_results_['mean_test_score']},
+                              orient='index', 
+                              columns= C_values
+                      )
+print(search_results)
 
 
+def simple_logistic_classify(X_tr, y_tr, X_test, y_test, description, _C=1):
+	### Helper function to train a logistic classifier and score on test data
+	m = linear_model.LogisticRegression(C=_C).fit(X_tr, y_tr)
+	s = m.score(X_test, y_test)
+	print("Test score with", description, "features: ", s)
+	return m
+m1 = simple_logistic_classify(xtrain_count, train_y, xvalid_count, valid_y, 'bow (before parameter tuning)', )
+m2 = simple_logistic_classify(xtrain_tfidf, train_y, xvalid_tfidf, valid_y, 'tfidf (before parameter tuning)')
 
-#Linear classifier on Tfidf vector
-accuracy = train_model(linear_model.LogisticRegression(), xtrain_tfidf, train_y, xvalid_tfidf)
-print("LR, Tfidf: ", accuracy)
-
-
-
-
-	
+m1 = simple_logistic_classify(xtrain_count, train_y, xvalid_count, valid_y, 'bow (after parameter tuning)', 
+								_C=bow_search.best_params_['C'])
+m2 = simple_logistic_classify(xtrain_tfidf, train_y, xvalid_tfidf, valid_y, 'tfidf (after parameter tuning)',
+								_C=tfidf_search.best_params_['C'])
